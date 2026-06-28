@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f4f9ff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Starnberger See" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>Starnberger See</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Live Guide</p>
+        <h1>Starnberger See</h1>
+        <p id="updatedAt" class="updated">Live-Daten werden geladen…</p>
+      </div>
+      <button id="refreshBtn" class="icon-button" aria-label="Aktualisieren">↻</button>
+    </header>
+
+    <nav class="tabbar glass" aria-label="App-Bereiche">
+      <button class="tab-button active" data-tab="current" aria-selected="true">Aktuell</button>
+      <button class="tab-button" data-tab="forecast" aria-selected="false">14 Tage</button>
+      <button class="tab-button" data-tab="wind" aria-selected="false">Windkarte</button>
+      <button class="tab-button" data-tab="water" aria-selected="false">Wasser</button>
+      <button class="tab-button" data-tab="logbuch" aria-selected="false">Logbuch</button>
+    </nav>
+
+    <main>
+      <section id="tab-current" class="tab-panel active">
+        <section class="hero-card glass">
+          <div class="hero-topline"><span id="statusPill" class="status-pill">lädt…</span><span id="todayDate" class="updated">—</span></div>
+          <h2 id="mainTitle">Wetter wird geladen</h2>
+          <p id="mainText" class="hero-text">Ich hole Wind, Temperatur, Böen und Wetterdaten für den See.</p>
+          <div class="score-grid">
+            <div class="score"><span>⛵</span><b id="scoreSailing">–/10</b><small>Segeln</small></div>
+            <div class="score"><span>🌊</span><b id="scoreBathing">–/10</b><small>Baden</small></div>
+            <div class="score"><span>⚓</span><b id="scoreBuoy">–/10</b><small>Boje</small></div>
+          </div>
+        </section>
+
+        <section class="metric-grid">
+          <article class="metric glass"><small>Luft</small><strong id="tempNow">—</strong><span id="tempRange">—</span></article>
+          <article class="metric glass"><small>Wind</small><strong id="windNow">—</strong><span id="windDir">—</span></article>
+          <article class="metric glass"><small>Böen</small><strong id="gustNow">—</strong><span id="gustRisk">—</span></article>
+          <article class="metric glass"><small>Warnung</small><strong id="warningNow">—</strong><span id="warningText">—</span></article>
+        </section>
+
+        <section class="section-head first-head"><h3>Aussicht</h3><span>Heute & Morgen</span></section>
+        <div id="todayTomorrow" class="day-stack"></div>
+      </section>
+
+      <section id="tab-forecast" class="tab-panel">
+        <section class="section-head first-head"><h3>14-Tage-Vorschau</h3><span>Wind in kn</span></section>
+        <div id="forecastList" class="forecast-list"></div>
+        <button class="wide-button" id="forecastHint">Tag antippen für Stundenübersicht</button>
+      </section>
+
+      <section id="tab-wind" class="tab-panel">
+        <section class="section-head first-head"><h3>Wind am See</h3><span id="mapWindLabel">Live</span></section>
+        <section class="wind-card glass">
+          <div class="wind-summary">
+            <div><span>Aktuelle Windrichtung</span><strong id="mapWindDir">—</strong><small id="mapWindMeta">—</small></div>
+            <div class="compass" aria-label="Windrichtung"><span>N</span><span>O</span><span>S</span><span>W</span><b id="compassArrow">↑</b></div>
+          </div>
+          <div id="windMap" class="wind-map" role="img" aria-label="Karte vom Starnberger See mit Windpfeilen"></div>
+          <div id="windZones" class="zone-list"></div>
+          <p class="map-note">Kartenbasis: OpenStreetMap. Die Pfeile zeigen die Richtung, in die der Wind über den See zieht. Zonenwerte sind aus der Forecast-Station abgeleitete Näherungen.</p>
+        </section>
+      </section>
+
+      <section id="tab-water" class="tab-panel">
+        <section class="section-head first-head"><h3>Wasser</h3><span>Messwerte & Prognose</span></section>
+        <section class="water-card glass">
+          <div class="water-row"><div><span>Wassertemperatur heute</span><small id="waterTodayDate">—</small></div><strong id="waterTemp">—</strong></div>
+          <div class="bar-chart" id="waterTodayBars" aria-label="Wassertemperatur Tagesverlauf"></div>
+          <p id="waterNote" class="water-note">Schätzung aus Wettertrend. Für echte Messwerte: amtliche NID/HND-Quelle öffnen oder später über kleinen Backend-Proxy anbinden.</p>
+        </section>
+        <section class="water-card glass">
+          <div class="water-row"><div><span>Verlauf der letzten 7 Tage</span><small>Täglicher Durchschnitt</small></div><strong id="waterTrend">—</strong></div>
+          <div class="line-chart" id="waterWeekLine" aria-label="Wassertemperatur der letzten 7 Tage"></div>
+        </section>
+        <section class="water-card glass">
+          <div class="water-row"><div><span>Prognose</span><small>Nächste 5 Tage</small></div><strong id="waterForecastTrend">—</strong></div>
+          <div id="waterForecast" class="water-forecast"></div>
+        </section>
+        <section class="water-card glass">
+          <div class="water-row"><div><span>Wasserhöhe / Pegel</span><small>Pegel Starnberg / HND Bayern</small></div><strong id="waterLevel">Link</strong></div>
+          <a class="source-link" href="https://www.hnd.bayern.de/pegel/isar/starnberg-16663002" target="_blank" rel="noreferrer">Pegel Starnberg öffnen</a>
+          <a class="source-link" href="https://www.nid.bayern.de/wassertemperatur/isar/starnberg_tw-16663002" target="_blank" rel="noreferrer">Wassertemperatur Starnberg öffnen</a>
+        </section>
+      </section>
+
+      <!-- LOGBUCH TAB -->
+      <section id="tab-logbuch" class="tab-panel">
+        <section class="section-head first-head">
+          <h3>Logbuch</h3>
+          <span id="logbuchStats">0 Einträge</span>
+        </section>
+        <div style="padding:0 16px 12px">
+          <button id="newEntryBtn" class="logbuch-new-btn">+ Neuen Törn eintragen</button>
+        </div>
+        <div id="logbuchList" class="logbuch-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- LOGBUCH NEUER EINTRAG SHEET -->
+  <div id="newEntrySheet" class="sheet" aria-hidden="true">
+    <div class="sheet-backdrop" data-close-entry></div>
+    <section class="sheet-panel glass" role="dialog" aria-modal="true">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div><p class="eyebrow">Starnberger See</p><h3>Neuer Törn</h3></div>
+        <button class="icon-button small" data-close-entry aria-label="Schließen">×</button>
+      </div>
+      <!-- Auto-importierte Wetterdaten -->
+      <div class="entry-weather-import glass">
+        <div class="entry-import-label">⚡ Automatisch importiert</div>
+        <div class="entry-weather-grid">
+          <div class="entry-weather-item"><b id="entryWeatherIcon">🌤️</b><small>Wetter</small></div>
+          <div class="entry-weather-item"><b id="entryWindVal">— kn</b><small id="entryWindDir">—</small></div>
+          <div class="entry-weather-item"><b id="entryTempVal">—°C</b><small>Temperatur</small></div>
+          <div class="entry-weather-item"><b id="entryGustVal">— kn</b><small>Böen</small></div>
+        </div>
+      </div>
+      <!-- GPS Tracking -->
+      <div class="entry-section">
+        <div id="trackingStatus" class="tracking-idle">
+          <button id="startTrackBtn" class="tracking-start-btn">📍 GPS-Tracking starten</button>
+          <p class="tracking-hint">Route, Distanz & Geschwindigkeit werden aufgezeichnet</p>
+        </div>
+        <div id="trackingActive" class="tracking-live" style="display:none">
+          <div class="tracking-rec"><span class="rec-dot"></span> REC</div>
+          <div class="tracking-stats">
+            <div class="tracking-stat"><span id="trackTime">00:00</span><small>Zeit</small></div>
+            <div class="tracking-stat"><span id="trackDist">0.0 km</span><small>Distanz</small></div>
+            <div class="tracking-stat"><span id="trackSpeed">0 kn</span><small>Speed</small></div>
+          </div>
+          <button id="stopTrackBtn" class="tracking-stop-btn">⏹ Tracking beenden</button>
+        </div>
+      </div>
+      <!-- Foto -->
+      <div class="entry-section">
+        <label class="entry-photo-btn">
+          <input type="file" id="entryPhoto" accept="image/*" capture="environment" style="display:none">
+          <span id="entryPhotoPreview">📸 Foto hinzufügen</span>
+        </label>
+      </div>
+      <!-- Notiz -->
+      <div class="entry-section">
+        <textarea id="entryNote" class="entry-note" placeholder="Wie war der Törn? Route, Crew, Besonderheiten…"></textarea>
+      </div>
+      <button id="saveEntryBtn" class="logbuch-save-btn">Eintrag speichern</button>
+    </section>
+  </div>
+
+  <!-- LOGBUCH DETAIL SHEET -->
+  <div id="detailSheet" class="sheet" aria-hidden="true">
+    <div class="sheet-backdrop" data-close-detail></div>
+    <section class="sheet-panel glass" role="dialog" aria-modal="true">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div><p id="detailDate" class="eyebrow">—</p><h3 id="detailTitle">—</h3></div>
+        <button class="icon-button small" data-close-detail aria-label="Schließen">×</button>
+      </div>
+      <div id="detailContent"></div>
+    </section>
+  </div>
+
+  <div id="daySheet" class="sheet" aria-hidden="true">
+    <div class="sheet-backdrop" data-close-sheet></div>
+    <section class="sheet-panel glass" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header"><div><p id="sheetDate" class="eyebrow">—</p><h3 id="sheetTitle">Tagesdetails</h3></div><button class="icon-button small" data-close-sheet aria-label="Schließen">×</button></div>
+      <p id="sheetSummary" class="sheet-summary">—</p>
+      <div id="hourlyList" class="hourly-list"></div>
+    </section>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
