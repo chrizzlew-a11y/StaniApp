@@ -383,9 +383,9 @@ function knotSVGFallback(i){
   return svgs[i]||svgs[0];
 }
 function renderKnots(){if($('knotList').children.length)return;$('knotList').innerHTML=knots.map((k,i)=>`<button class="knot-row" data-knot="${i}"><div class="knot-thumb">${knotSVG(i)}</div><div><h4>${i+1}. ${esc(k[0])}</h4><p>${esc(k[1])}</p></div><span class="level ${k[2]==='Mittel'?'mid':''}">${k[2]}</span></button>`).join('');document.querySelectorAll('[data-knot]').forEach(b=>b.addEventListener('click',()=>openKnot(Number(b.dataset.knot))))}
-function openKnot(i){const k=knots[i];$('knotTitle').textContent=k[0];$('knotUse').textContent=k[2];$('knotVisual').innerHTML=`<img src="${knotImgUrl(i)}" alt="${esc(k[0])}" style="max-width:100%;max-height:200px;object-fit:contain;border-radius:16px;" loading="lazy" onerror="this.src='';this.style.display='none'">`;$('knotDesc').textContent=k[1];$('knotSteps').innerHTML=k[3].map((s,j)=>`<div class="knot-step"><b>${j+1}</b><span>${esc(s)}</span></div>`).join('')+(k[4]?`<a href="${esc(k[4])}" target="_blank" rel="noreferrer" class="knot-link-btn">▶ Animation auf animatedknots.com</a>`:'');$('knotSheet').classList.add('open');$('knotSheet').setAttribute('aria-hidden','false');document.body.classList.add('sheet-open')}
-function openDaySheet(index){const day=appState.days[index];if(!day)return;const c=classifyDay(day);const hours=(appState.hourlyByDate[day.time]||[]).filter(h=>new Date(h.time).getHours()>=6&&new Date(h.time).getHours()<=22);$('sheetDate').textContent=fmtLongDate(day.time);$('sheetTitle').textContent=c.title;const prog=dayProgressionText(hours,index+1);$('sheetSummary').textContent=prog?`${c.text} ${prog}`:c.text;$('hourlyList').innerHTML=hours.map(h=>`<div class="hour-row"><div class="hour-time">${fmtHour(h.time)}</div><div class="hour-weather"><strong>${iconMap(h.weather_code)} ${esc(weatherMap[h.weather_code]||'Wetter')}</strong><span>${Math.round(h.temp)}°C · Regen ${h.rain??0}%</span></div><div class="hour-wind"><strong>${h.wind} kn</strong><span>Böen ${h.gust} kn · ${h.dir}</span></div></div>`).join('')||'<p class="sheet-summary">Für diesen Tag liegen keine Stundenwerte vor.</p>';$('daySheet').classList.add('open');$('daySheet').setAttribute('aria-hidden','false');document.body.classList.add('sheet-open')}
-function closeSheet(id){$(id).classList.remove('open');$(id).setAttribute('aria-hidden','true');document.body.classList.remove('sheet-open')}
+function openKnot(i){const k=knots[i];$('knotTitle').textContent=k[0];$('knotUse').textContent=k[2];$('knotVisual').innerHTML=`<img src="${knotImgUrl(i)}" alt="${esc(k[0])}" style="max-width:100%;max-height:200px;object-fit:contain;border-radius:16px;" loading="lazy" onerror="this.src='';this.style.display='none'">`;$('knotDesc').textContent=k[1];$('knotSteps').innerHTML=k[3].map((s,j)=>`<div class="knot-step"><b>${j+1}</b><span>${esc(s)}</span></div>`).join('')+(k[4]?`<a href="${esc(k[4])}" target="_blank" rel="noreferrer" class="knot-link-btn">▶ Animation auf animatedknots.com</a>`:'');openSheet('knotSheet')}
+function openDaySheet(index){const day=appState.days[index];if(!day)return;const c=classifyDay(day);const hours=(appState.hourlyByDate[day.time]||[]).filter(h=>new Date(h.time).getHours()>=6&&new Date(h.time).getHours()<=22);$('sheetDate').textContent=fmtLongDate(day.time);$('sheetTitle').textContent=c.title;const prog=dayProgressionText(hours,index+1);$('sheetSummary').textContent=prog?`${c.text} ${prog}`:c.text;$('hourlyList').innerHTML=hours.map(h=>`<div class="hour-row"><div class="hour-time">${fmtHour(h.time)}</div><div class="hour-weather"><strong>${iconMap(h.weather_code)} ${esc(weatherMap[h.weather_code]||'Wetter')}</strong><span>${Math.round(h.temp)}°C · Regen ${h.rain??0}%</span></div><div class="hour-wind"><strong>${h.wind} kn</strong><span>Böen ${h.gust} kn · ${h.dir}</span></div></div>`).join('')||'<p class="sheet-summary">Für diesen Tag liegen keine Stundenwerte vor.</p>';openSheet('daySheet')}
+function openSheet(id){const el=$(id);if(!el)return;el.classList.add('open');el.setAttribute('aria-hidden','false');document.body.classList.add('sheet-open')}function closeSheet(id){const el=$(id);if(!el)return;el.classList.remove('open');el.setAttribute('aria-hidden','true');document.body.classList.remove('sheet-open')}
 function setupTabs(){const buttons=document.querySelectorAll('.tab-button[data-tab]'),panels=document.querySelectorAll('.tab-panel');buttons.forEach(btn=>btn.addEventListener('click',()=>{const tab=btn.dataset.tab;buttons.forEach(b=>{const a=b===btn;b.classList.toggle('active',a);b.setAttribute('aria-selected',a?'true':'false')});panels.forEach(p=>p.classList.toggle('active',p.id===`tab-${tab}`));if(tab==='wind'&&appState.map)setTimeout(()=>appState.map.invalidateSize(),120);window.scrollTo({top:0,behavior:'smooth'})}))}
 async function boot(forceRefresh=false){try{await loadData(forceRefresh)}catch(e){console.error(e);$('mainTitle').textContent='Keine Verbindung';$('mainText').textContent='Die Live-Daten konnten nicht geladen werden. Prüfe Internet oder API-Zugriff.'}}
 $('refreshBtn').addEventListener('click',()=>boot(true));document.querySelectorAll('[data-close-sheet]').forEach(el=>el.addEventListener('click',()=>closeSheet('daySheet')));document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeSheet('daySheet')}});setupTabs();if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});boot();
@@ -579,18 +579,27 @@ function saveEntry() {
 }
 
 // Photo preview
-document.addEventListener('DOMContentLoaded', () => {});
-setTimeout(() => {
+// Logbuch listeners - use DOMContentLoaded for reliability
+function initLogbuch() {
   const photoInput = $('entryPhoto');
   if (photoInput) photoInput.addEventListener('change', () => {
     const f = photoInput.files[0];
     $('entryPhotoPreview').textContent = f ? `📸 ${f.name}` : '📸 Foto hinzufügen';
   });
-  $('newEntryBtn')?.addEventListener('click', openNewEntry);
-  $('startTrackBtn')?.addEventListener('click', startTracking);
-  $('stopTrackBtn')?.addEventListener('click', stopTracking);
-  $('saveEntryBtn')?.addEventListener('click', saveEntry);
+  const nb = $('newEntryBtn');
+  if (nb) nb.addEventListener('click', openNewEntry);
+  const sb = $('startTrackBtn');
+  if (sb) sb.addEventListener('click', startTracking);
+  const stb = $('stopTrackBtn');
+  if (stb) stb.addEventListener('click', stopTracking);
+  const seb = $('saveEntryBtn');
+  if (seb) seb.addEventListener('click', saveEntry);
   document.querySelectorAll('[data-close-entry]').forEach(el => el.addEventListener('click', () => { stopTracking(); closeSheet('newEntrySheet'); }));
   document.querySelectorAll('[data-close-detail]').forEach(el => el.addEventListener('click', () => closeSheet('detailSheet')));
   renderLogbuch();
-}, 100);
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initLogbuch);
+} else {
+  initLogbuch();
+}
